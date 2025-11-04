@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistics - Wonderland</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<style>
+        /* Background Image Styling - Using Beautiful Amusement Park Image */
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), 
+                        url('https://jurasikparkinn.com/wp-content/uploads/2024/02/6-Reasons-To-Explore-Amusement-Parks.webp') center/cover no-repeat fixed !important;
+            min-height: 100vh;
+        }
+</style>
+<body>
+    <div class="header">
+        <h1>🎢 Wonderland Amusement Park</h1>
+        <p>Park Statistics & Analytics</p>
+    </div>
+
+    <div class="container">
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="dashboard.html" class="nav-btn">🏠 Dashboard</a>
+            <a href="rides.html" class="nav-btn">🎢 Rides</a>
+            <a href="dining.html" class="nav-btn">🍔 Dining</a>
+            <a href="shops.html" class="nav-btn">🛍️ Shops</a>
+            <a href="feedback.html" class="nav-btn">⭐ Feedback</a>
+            <a href="profile.html" class="nav-btn">👤 Profile</a>
+            <a href="statistics.html" class="nav-btn active">📊 Statistics</a>
+            <button onclick="logout()" class="nav-btn" style="background: var(--danger-color);">🚪 Logout</button>
+        </div>
+
+        <!-- Overall Statistics -->
+        <div class="card">
+            <h3 class="mb-2">Overall Park Statistics</h3>
+            <div class="grid grid-4" id="overallStats">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- Popular Rides -->
+        <div class="card">
+            <h3 class="mb-2">🎢 Most Popular Rides</h3>
+            <div id="popularRides">
+                <div class="spinner"></div>
+            </div>
+        </div>
+
+        <!-- Popular Restaurants -->
+        <div class="card">
+            <h3 class="mb-2">🍔 Most Popular Restaurants</h3>
+            <div id="popularMess">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        if (!checkAuth()) {
+            window.location.href = 'login.html';
+        }
+
+        async function loadStatistics() {
+            const statsResult = await apiCall('get_statistics.php', 'GET');
+            
+            if (statsResult.success) {
+                const stats = statsResult.statistics;
+                
+                // Overall stats
+                document.getElementById('overallStats').innerHTML = `
+                    <div class="stat-box">
+                        <div class="stat-value">${stats.total_visitors}</div>
+                        <div class="stat-label">Total Visitors</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${stats.average_age}</div>
+                        <div class="stat-label">Average Age</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${stats.vip_count}</div>
+                        <div class="stat-label">VIP Members</div>
+                    </div>
+                  
+                `;
+                
+                // Popular rides
+                if (stats.popular_rides.length > 0) {
+                    let html = '<div class="table-container"><table><thead><tr><th>Ride Name</th><th>Total Visitors</th><th>Avg Rating</th></tr></thead><tbody>';
+                    stats.popular_rides.forEach(ride => {
+                        html += `
+                            <tr>
+                                <td>${ride.Name}</td>
+                                <td>${ride.visitors}</td>
+                                <td>${ride.avg_rating ? formatStars(parseFloat(ride.avg_rating)) : 'N/A'}</td>
+                            </tr>
+                        `;
+                    });
+                    html += '</tbody></table></div>';
+                    document.getElementById('popularRides').innerHTML = html;
+                } else {
+                    document.getElementById('popularRides').innerHTML = '<p>No ride data available</p>';
+                }
+                
+                // Popular restaurants
+                if (stats.popular_mess.length > 0) {
+                    let html = '<div class="table-container"><table><thead><tr><th>Restaurant Name</th><th>Total Visitors</th></tr></thead><tbody>';
+                    stats.popular_mess.forEach(mess => {
+                        html += `
+                            <tr>
+                                <td>${mess.Name}</td>
+                                <td>${mess.visitors}</td>
+                            </tr>
+                        `;
+                    });
+                    html += '</tbody></table></div>';
+                    document.getElementById('popularMess').innerHTML = html;
+                } else {
+                    document.getElementById('popularMess').innerHTML = '<p>No restaurant data available</p>';
+                }
+            } else {
+                showAlert('Failed to load statistics', 'danger');
+            }
+        }
+
+        loadStatistics();
+    </script>
+</body>
+</html>

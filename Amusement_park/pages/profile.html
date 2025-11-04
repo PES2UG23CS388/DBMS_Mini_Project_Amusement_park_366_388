@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Profile - Funderland</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* Background Image Styling */
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), 
+                        url('https://jurasikparkinn.com/wp-content/uploads/2024/02/6-Reasons-To-Explore-Amusement-Parks.webp') center/cover no-repeat fixed !important;
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎢 Funderland - Where the Fun Begins!</h1>
+        <p>Your Profile & Card Management</p>
+    </div>
+    <div class="container">
+        <div class="nav">
+            <a href="dashboard.html" class="nav-btn">🏠 Dashboard</a>
+            <a href="rides.html" class="nav-btn">🎢 Rides</a>
+            <a href="dining.html" class="nav-btn">🍔 Dining</a>
+            <a href="shops.html" class="nav-btn">🛍️ Shops</a>
+            <a href="feedback.html" class="nav-btn">⭐ Feedback</a>
+            <a href="profile2.html" class="nav-btn active">👤 Profile</a>
+            <a href="statistics.html" class="nav-btn">📊 Statistics</a>
+            <button onclick="logout()" class="nav-btn" style="background: var(--danger);">🚪 Logout</button>
+        </div>
+
+        <!-- Profile Card with Balance and Total Spent -->
+        <div class="profile-card" id="profileCard">
+            <h2 id="visitorName">Loading...</h2>
+            <p id="visitorInfo">Visitor #<span id="visitorNumber"></span> • Age: <span id="visitorAge"></span></p>
+            
+            <!-- Card Balance -->
+            <div class="balance" id="cardBalance">₹0.00</div>
+            <p>💰 Current Balance</p>
+            
+            <!-- Total Spent (NEW!) -->
+            <div class="balance" id="totalSpent" style="font-size: 2rem; margin-top: 1.5rem; color: #E74C3C;">₹0.00</div>
+            <p>💸 Total Spent</p>
+            
+            <div class="profile-info">
+                <div class="profile-info-item">
+                    <strong>Card ID</strong>
+                    <span id="cardID">-</span>
+                </div>
+                <div class="profile-info-item">
+                    <strong>Member Type</strong>
+                    <span id="memberType">Regular</span>
+                </div>
+                <div class="profile-info-item">
+                    <strong>Dining Preference</strong>
+                    <span id="diningPref">Not Set</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-2">
+            <div class="card">
+                <h3 class="mb-2">💳 Recharge Card</h3>
+                <p>Add money to your park card:</p>
+                <div class="form-group">
+                    <label for="rechargeAmount">Amount (₹)</label>
+                    <input type="number" id="rechargeAmount" class="form-control" min="0" step="0.01" placeholder="Enter amount">
+                </div>
+                <button onclick="rechargeCard()" class="btn btn-success btn-full">Add Money</button>
+            </div>
+
+            <div class="card" id="vipCard">
+                <h3 class="mb-2">⭐ Upgrade to VIP</h3>
+                <p>Unlock exclusive benefits:</p>
+                <ul style="margin: 15px 0; padding-left: 20px;">
+                    <li style="margin: 8px 0;">🎢 Access to VIP-only rides</li>
+                    <li style="margin: 8px 0;">🏰 Premium lounges</li>
+                    <li style="margin: 8px 0;">⚡ Skip-the-line privileges</li>
+                    <li style="margin: 8px 0;">💰 Special discounts</li>
+                </ul>
+                <div style="background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); padding: 25px; border-radius: 12px; text-align: center; margin: 20px 0; border: 3px solid #e6c200;">
+                    <p style="font-size: 3rem; font-weight: bold; color: #000; margin: 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.15);">₹1,500</p>
+                    <p style="color: #333; margin: 8px 0; font-weight: 600; font-size: 1.1rem;">One-time VIP membership fee</p>
+                    <p style="color: #555; margin: 0; font-size: 0.9rem;">Lifetime access to exclusive benefits!</p>
+                </div>
+                <button onclick="upgradeVIP()" class="btn btn-warning btn-full" style="font-size: 1.2rem; padding: 15px; background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%); color: #000; font-weight: bold; box-shadow: 0 4px 10px rgba(255, 215, 0, 0.4);">💎 Upgrade to VIP Now</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        const FIFTEEN_HUNDRED = 1500;
+
+        async function loadProfile() {
+            if (!checkAuth()) return;
+            
+            const visitor = getVisitor();
+
+            // Load visitor data
+            const visitorData = await apiCall('get_visitor.php', 'GET', { visitor_number: visitor.Number });
+            if (visitorData.success) {
+                const v = visitorData.visitor;
+                document.getElementById('visitorName').textContent = v.Name;
+                document.getElementById('visitorNumber').textContent = v.Number;
+                document.getElementById('visitorAge').textContent = v.Age;
+                document.getElementById('diningPref').textContent = v.Eats_at || 'Not Set';
+            }
+
+            // Load card data
+            const cardData = await apiCall('get_card.php', 'GET', { visitor_number: visitor.Number });
+            if (cardData.success) {
+                const card = cardData.card;
+                document.getElementById('cardBalance').textContent = '₹' + parseFloat(card.Balance).toFixed(2);
+                document.getElementById('cardID').textContent = card.Card_id;
+                
+                const isVIP = card.VIP == 1 || card.VIP == true;
+                const memberType = document.getElementById('memberType');
+                
+                if (isVIP) {
+                    memberType.innerHTML = 'VIP <span class="badge badge-vip">⭐</span>';
+                    document.getElementById('vipCard').innerHTML = '<h3 class="mb-2" style="color: #ffd700;">⭐ VIP Member</h3><p style="font-size: 1.2rem; color: #27AE60; font-weight: 600;">You are already a VIP member!</p><div style="background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%); padding: 30px; border-radius: 12px; text-align: center; margin: 20px 0;"><p style="font-size: 3rem; margin: 0;">🎉</p><p style="font-size: 1.5rem; font-weight: bold; color: #000; margin: 10px 0;">VIP Status Active</p><p style="color: #333;">Enjoy all exclusive benefits!</p></div>';
+                }
+            }
+
+            // Load total spent (NEW!)
+            const spentResult = await apiCall('get_total_spent.php', 'GET', { visitor_number: visitor.Number });
+            if (spentResult.success) {
+                document.getElementById('totalSpent').textContent = '₹' + parseFloat(spentResult.total_spent).toFixed(2);
+            } else {
+                document.getElementById('totalSpent').textContent = '₹0.00';
+            }
+        }
+
+        async function rechargeCard() {
+            const amount = parseFloat(document.getElementById('rechargeAmount').value);
+            if (!amount || amount <= 0) {
+                showAlert('Please enter a valid amount', 'danger');
+                return;
+            }
+
+            const visitor = getVisitor();
+            const result = await apiCall('recharge_card.php', 'POST', {
+                visitorNumber: visitor.Number,
+                amount: amount
+            });
+
+            if (result.success) {
+                showAlert('Card recharged successfully! New balance: ₹' + result.new_balance, 'success');
+                document.getElementById('cardBalance').textContent = '₹' + parseFloat(result.new_balance).toFixed(2);
+                document.getElementById('rechargeAmount').value = '';
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        }
+
+        async function upgradeVIP() {
+            if (!confirm('Upgrade to VIP for ₹' + FIFTEEN_HUNDRED + '? This will be deducted from your card balance.')) return;
+
+            const visitor = getVisitor();
+            const result = await apiCall('upgrade_vip.php', 'POST', {
+                visitorNumber: visitor.Number
+            });
+
+            if (result.success) {
+                showAlert(result.message + ' New balance: ₹' + result.new_balance, 'success');
+                loadProfile();
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', loadProfile);
+    </script>
+</body>
+</html>

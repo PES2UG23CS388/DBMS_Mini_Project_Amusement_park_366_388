@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rides - Wonderland</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="header">
+        <h1>🎢 Wonderland Amusement Park</h1>
+        <p>Thrilling Rides & Attractions</p>
+    </div>
+<style>
+        /* Background Image Styling - Using Beautiful Amusement Park Image */
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), 
+                        url('https://as1.ftcdn.net/v2/jpg/01/36/67/96/1000_F_136679637_FVNVNMhVpyDuOdC78cwki9E2M2XGYBLd.jpg') center/cover no-repeat fixed !important;
+            min-height: 100vh;
+        }
+</style>
+<style>
+    /* FORCE WHITE CARDS */
+    .item-card {
+        background-color: white !important;
+        color: #2C3E50 !important;
+        padding: 1.5rem !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .item-card h3,
+    .item-card p,
+    .item-card .price,
+    .item-card .rating {
+        color: #2C3E50 !important;
+        text-shadow: none !important;
+    }
+
+    .grid > div {
+        background-color: white !important;
+    }
+</style>
+
+    <div class="container">
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="dashboard.html" class="nav-btn">🏠 Dashboard</a>
+            <a href="rides.html" class="nav-btn active">🎢 Rides</a>
+            <a href="dining.html" class="nav-btn">🍔 Dining</a>
+            <a href="shops.html" class="nav-btn">🛍️ Shops</a>
+            <a href="feedback.html" class="nav-btn">⭐ Feedback</a>
+            <a href="profile.html" class="nav-btn">👤 Profile</a>
+            <a href="statistics.html" class="nav-btn">📊 Statistics</a>
+            <button onclick="logout()" class="nav-btn" style="background: var(--danger-color);">🚪 Logout</button>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <label for="filterType" style="font-weight: 600;">Filter:</label>
+            <select id="filterType" class="form-control" style="width: auto;">
+                <option value="all">All Rides</option>
+                <option value="regular">Regular Rides</option>
+                <option value="vip">VIP Only</option>
+            </select>
+            <label for="sortBy" style="font-weight: 600; margin-left: 20px;">Sort by:</label>
+            <select id="sortBy" class="form-control" style="width: auto;">
+                <option value="name">Name</option>
+                <option value="cost_low">Cost (Low to High)</option>
+                <option value="cost_high">Cost (High to Low)</option>
+                <option value="rating">Rating</option>
+            </select>
+        </div>
+
+        <!-- Rides Grid -->
+        <div id="ridesContainer">
+            <div class="spinner"></div>
+            <p class="loading-text">Loading rides...</p>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        if (!checkAuth()) {
+            window.location.href = 'login.html';
+        }
+
+        const visitor = getVisitor();
+        let allRides = [];
+        let userCard = null;
+
+        async function loadRides() {
+            // Get user card info
+            const cardResult = await apiCall('get_card.php', 'GET', { visitor_number: visitor.Number });
+            if (cardResult.success) {
+                userCard = cardResult.card;
+            }
+
+            // Get all rides
+            const ridesResult = await apiCall('get_rides.php', 'GET');
+            
+            if (ridesResult.success) {
+                allRides = ridesResult.rides;
+                displayRides(allRides);
+            } else {
+                document.getElementById('ridesContainer').innerHTML = '<p class="text-center">Failed to load rides.</p>';
+            }
+        }
+
+        function displayRides(rides) {
+            if (rides.length === 0) {
+                document.getElementById('ridesContainer').innerHTML = '<p class="text-center">No rides found.</p>';
+                return;
+            }
+
+            let html = '<div class="grid grid-3">';
+            
+            rides.forEach(ride => {
+                const isVIP = ride.VIP == 1;
+                const canAccess = !isVIP || (userCard && userCard.VIP == 1);
+                const hasBalance = userCard && parseFloat(userCard.Balance) >= parseFloat(ride.Cost);
+                
+                html += `
+                    <div class="item-card">
+                        <h3>${ride.Name} ${isVIP ? '<span class="badge badge-vip">VIP</span>' : ''}</h3>
+                        <p class="price">${formatCurrency(ride.Cost)}</p>
+                        <p class="rating">${formatStars(ride.Average_Rating)}</p>
+                        <p>👥 ${ride.Total_Visitors} riders</p>
+                        
+                        ${!canAccess ? '<p style="color: var(--danger-color); font-weight: 600;">⚠️ VIP Membership Required</p>' : ''}
+                        ${canAccess && !hasBalance ? '<p style="color: var(--warning-color); font-weight: 600;">⚠️ Insufficient Balance</p>' : ''}
+                        
+                        <button 
+                            class="btn btn-primary btn-full mt-1" 
+                            onclick="bookRide(${ride.ID}, '${ride.Name}', ${ride.Cost})"
+                            ${!canAccess || !hasBalance ? 'disabled' : ''}
+                        >
+                            ${canAccess && hasBalance ? 'Book Ride' : 'Cannot Book'}
+                        </button>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            document.getElementById('ridesContainer').innerHTML = html;
+        }
+
+        async function bookRide(rideID, rideName, cost) {
+            if (!confirm(`Book ${rideName} for ${formatCurrency(cost)}?`)) {
+                return;
+            }
+
+            const result = await apiCall('book_ride.php', 'POST', {
+                visitorNumber: visitor.Number,
+                rideID: rideID
+            });
+
+            if (result.success) {
+                showAlert(`✅ ${result.message}. New balance: ${formatCurrency(result.new_balance)}`, 'success');
+                userCard.Balance = result.new_balance;
+                loadRides(); // Reload to update
+            } else {
+                showAlert(`❌ ${result.message}`, 'danger');
+            }
+        }
+
+        // Filter and sort functionality
+        document.getElementById('filterType').addEventListener('change', filterRides);
+        document.getElementById('sortBy').addEventListener('change', filterRides);
+
+        function filterRides() {
+            const filterType = document.getElementById('filterType').value;
+            const sortBy = document.getElementById('sortBy').value;
+            
+            let filtered = [...allRides];
+            
+            // Filter
+            if (filterType === 'regular') {
+                filtered = filtered.filter(r => r.VIP == 0);
+            } else if (filterType === 'vip') {
+                filtered = filtered.filter(r => r.VIP == 1);
+            }
+            
+            // Sort
+            if (sortBy === 'name') {
+                filtered.sort((a, b) => a.Name.localeCompare(b.Name));
+            } else if (sortBy === 'cost_low') {
+                filtered.sort((a, b) => parseFloat(a.Cost) - parseFloat(b.Cost));
+            } else if (sortBy === 'cost_high') {
+                filtered.sort((a, b) => parseFloat(b.Cost) - parseFloat(a.Cost));
+            } else if (sortBy === 'rating') {
+                filtered.sort((a, b) => parseFloat(b.Average_Rating) - parseFloat(a.Average_Rating));
+            }
+            
+            displayRides(filtered);
+        }
+
+        loadRides();
+    </script>
+</body>
+</html>

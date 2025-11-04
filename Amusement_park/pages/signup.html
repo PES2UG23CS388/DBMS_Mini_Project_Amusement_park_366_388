@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Up - Funderland</title>
+    <link rel="stylesheet" href="../css/style.css">
+    <style>
+        /* VIP Price Override - Force 1500 */
+        .badge-vip::after {
+            content: '' !important;
+        }
+
+        /* Background Image Styling - Using Beautiful Amusement Park Image */
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), 
+                        url('https://jurasikparkinn.com/wp-content/uploads/2024/02/6-Reasons-To-Explore-Amusement-Parks.webp') center/cover no-repeat fixed !important;
+            min-height: 100vh;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎢 Funderland - Where the Fun Begins!</h1>
+        <p>Create Your Account</p>
+    </div>
+    <div class="container">
+        <div class="card" style="max-width: 600px; margin: 0 auto;">
+            <h2 class="text-center mb-2">Sign Up</h2>
+            <form id="signupForm">
+                <div class="form-group">
+                    <label for="name">Full Name *</label>
+                    <input type="text" id="name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label for="age">Age *</label>
+                    <input type="number" id="age" class="form-control" min="1" max="120" required>
+                </div>
+                <div class="form-group">
+                    <label for="initialBalance">Initial Card Balance</label>
+                    <input type="number" id="initialBalance" class="form-control" min="0" step="0.01" value="0" placeholder="Enter amount in Rupees">
+                    <small style="color: #666;">You can add money to your card later</small>
+                </div>
+                <div class="form-group">
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="isVIP">
+                        <label for="isVIP">
+                            VIP Membership 
+                            <span class="badge badge-vip" style="background: gold; color: #000; padding: 4px 12px; border-radius: 20px; font-weight: bold;">ONE THOUSAND FIVE HUNDRED RUPEES</span>
+                        </label>
+                    </div>
+                    <small style="color: #666; font-weight: bold;">✨ Get exclusive access to VIP rides and lounges! One-time fee of Rs. 1500 ✨</small>
+                </div>
+                <button type="submit" class="btn btn-primary btn-full">Create Account</button>
+            </form>
+            <p class="text-center mt-2">
+                Already have an account? 
+                <a href="login.html" style="color: var(--primary-color); font-weight: 600;">Login here</a>
+            </p>
+        </div>
+    </div>
+    <script src="../js/main.js"></script>
+    <script>
+        // VIP cost constant - UPDATED TO 1500
+        const VIP_COST = 1500;
+        
+        document.getElementById('signupForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            const name = document.getElementById('name').value.trim();
+            const age = parseInt(document.getElementById('age').value);
+            const initialBalance = parseFloat(document.getElementById('initialBalance').value) || 0;
+            const isVIP = document.getElementById('isVIP').checked;
+            
+            if (!name || age <= 0) {
+                showAlert('Please fill all required fields', 'danger');
+                return;
+            }
+            
+            let finalBalance = initialBalance;
+            if (isVIP) {
+                finalBalance += VIP_COST; // Add 1500
+            }
+            
+            const result = await apiCall('signup.php', 'POST', {
+                name, age, initialBalance: finalBalance, isVIP
+            });
+            
+            if (result.success) {
+                alert(`✅ Account Created Successfully!\n\nYour Visitor Number: ${result.visitor_number}\nYour Card ID: ${result.card_id}\n${isVIP ? 'VIP Status: Active ⭐ (Fee: ₹1500)' : ''}\n\nPlease save your Visitor Number for login.`);
+                window.location.href = 'login.html';
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        });
+    </script>
+</body>
+</html>

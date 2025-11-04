@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Feedback - Wonderland</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<style>
+        /* Background Image Styling - Using Beautiful Amusement Park Image */
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), 
+                        url('https://jurasikparkinn.com/wp-content/uploads/2024/02/6-Reasons-To-Explore-Amusement-Parks.webp') center/cover no-repeat fixed !important;
+            min-height: 100vh;
+        }
+</style>
+<body>
+    <div class="header">
+        <h1>🎢 Wonderland Amusement Park</h1>
+        <p>Share Your Experience</p>
+    </div>
+
+    <div class="container">
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="dashboard.html" class="nav-btn">🏠 Dashboard</a>
+            <a href="rides.html" class="nav-btn">🎢 Rides</a>
+            <a href="dining.html" class="nav-btn">🍔 Dining</a>
+            <a href="shops.html" class="nav-btn">🛍️ Shops</a>
+            <a href="feedback.html" class="nav-btn active">⭐ Feedback</a>
+            <a href="profile.html" class="nav-btn">👤 Profile</a>
+            <a href="statistics.html" class="nav-btn">📊 Statistics</a>
+            <button onclick="logout()" class="nav-btn" style="background: var(--danger-color);">🚪 Logout</button>
+        </div>
+
+        <div class="grid grid-2">
+            <!-- Submit Feedback -->
+            <div class="card">
+                <h3 class="mb-2">Submit Feedback</h3>
+                <form id="feedbackForm">
+                    <div class="form-group">
+                        <label for="rideSelect">Select Ride *</label>
+                        <select id="rideSelect" class="form-control" required>
+                            <option value="">-- Select a ride you enjoyed --</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Rating *</label>
+                        <div class="star-rating">
+                            <span class="star" data-rating="1">★</span>
+                            <span class="star" data-rating="2">★</span>
+                            <span class="star" data-rating="3">★</span>
+                            <span class="star" data-rating="4">★</span>
+                            <span class="star" data-rating="5">★</span>
+                        </div>
+                        <input type="hidden" id="ratingValue" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="review">Review</label>
+                        <textarea id="review" class="form-control" placeholder="Tell us about your experience..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-full">Submit Feedback</button>
+                </form>
+            </div>
+
+            <!-- My Feedback -->
+            <div class="card">
+                <h3 class="mb-2">My Feedback History</h3>
+                <div id="myFeedback">
+                    <div class="spinner"></div>
+                    <p class="loading-text">Loading your feedback...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        if (!checkAuth()) {
+            window.location.href = 'login.html';
+        }
+
+        const visitor = getVisitor();
+        let selectedRating = 0;
+
+        // Star Rating System
+        const stars = document.querySelectorAll('.star');
+        const ratingInput = document.getElementById('ratingValue');
+        
+        stars.forEach((star, index) => {
+            star.addEventListener('click', function() {
+                const rating = index + 1;
+                selectedRating = rating;
+                ratingInput.value = rating;
+                
+                // Update star colors
+                stars.forEach((s, i) => {
+                    if (i < rating) {
+                        s.classList.add('selected');
+                        s.style.color = 'gold';
+                    } else {
+                        s.classList.remove('selected');
+                        s.style.color = '#ccc';
+                    }
+                });
+                
+                console.log('Rating selected:', rating);
+            });
+            
+            // Hover effect
+            star.addEventListener('mouseenter', function() {
+                stars.forEach((s, i) => {
+                    if (i <= index) {
+                        s.style.color = 'gold';
+                    }
+                });
+            });
+            
+            star.addEventListener('mouseleave', function() {
+                const currentRating = parseInt(ratingInput.value) || 0;
+                stars.forEach((s, i) => {
+                    s.style.color = (i < currentRating) ? 'gold' : '#ccc';
+                });
+            });
+        });
+
+        // Load rides the visitor has enjoyed
+        async function loadMyRides() {
+            const ridesResult = await apiCall('get_my_rides.php', 'GET', { visitor_number: visitor.Number });
+            
+            if (ridesResult.success && ridesResult.rides.length > 0) {
+                const select = document.getElementById('rideSelect');
+                ridesResult.rides.forEach(ride => {
+                    const option = document.createElement('option');
+                    option.value = ride.ID;
+                    option.textContent = ride.Name;
+                    select.appendChild(option);
+                });
+            } else {
+                document.getElementById('rideSelect').innerHTML = '<option value="">No rides enjoyed yet</option>';
+            }
+        }
+
+        // Submit feedback form
+        document.getElementById('feedbackForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const rideID = parseInt(document.getElementById('rideSelect').value);
+            const rating = selectedRating;
+            const review = document.getElementById('review').value.trim();
+            
+            if (!rideID) {
+                showAlert('Please select a ride', 'danger');
+                return;
+            }
+            
+            if (rating === 0) {
+                showAlert('Please select a rating', 'danger');
+                return;
+            }
+            
+            const result = await apiCall('submit_feedback.php', 'POST', {
+                visitorNumber: visitor.Number,
+                rideID: rideID,
+                rating: rating,
+                review: review
+            });
+            
+            if (result.success) {
+                showAlert('✅ ' + result.message, 'success');
+                document.getElementById('feedbackForm').reset();
+                selectedRating = 0;
+                ratingInput.value = 0;
+                stars.forEach(star => {
+                    star.classList.remove('selected');
+                    star.style.color = '#ccc';
+                });
+                loadMyFeedback();
+            } else {
+                showAlert('❌ ' + result.message, 'danger');
+            }
+        });
+
+        // Load my feedback
+        async function loadMyFeedback() {
+            const feedbackResult = await apiCall('get_feedback.php', 'GET', { visitor_number: visitor.Number });
+            
+            if (feedbackResult.success && feedbackResult.feedback.length > 0) {
+                let html = '';
+                feedbackResult.feedback.forEach(fb => {
+                    html += `
+                        <div class="item-card mb-1">
+                            <h4>${fb.Ride_Name}</h4>
+                            <p class="rating">${formatStars(fb.Rating)}</p>
+                            <p>${fb.Review || 'No review'}</p>
+                        </div>
+                    `;
+                });
+                document.getElementById('myFeedback').innerHTML = html;
+            } else {
+                document.getElementById('myFeedback').innerHTML = '<p>No feedback submitted yet.</p>';
+            }
+        }
+
+        loadMyRides();
+        loadMyFeedback();
+    </script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Find your ride select - adjust the ID to match your HTML
+    const rideSelect = document.getElementById('rideID'); // Change 'rideID' to your actual ID
+    
+    if (rideSelect) {
+        loadRidesForFeedback('rideID'); // Change 'rideID' to your actual ID
+    }
+});
+</script>
+
+</body>
+</html>

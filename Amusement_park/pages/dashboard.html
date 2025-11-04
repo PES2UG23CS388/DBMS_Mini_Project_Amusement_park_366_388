@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Wonderland</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<style>
+        /* Background Image Styling - Using Beautiful Amusement Park Image */
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), 
+                        url('https://jurasikparkinn.com/wp-content/uploads/2024/02/6-Reasons-To-Explore-Amusement-Parks.webp') center/cover no-repeat fixed !important;
+            min-height: 100vh;
+        }
+    </style>
+<body>
+    <div class="header">
+        <h1>🎢 Wonderland Amusement Park</h1>
+        <p id="welcomeText">Welcome back!</p>
+    </div>
+
+    <div class="container">
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="dashboard.html" class="nav-btn active">🏠 Dashboard</a>
+            <a href="rides.html" class="nav-btn">🎢 Rides</a>
+            <a href="dining.html" class="nav-btn">🍔 Dining</a>
+            <a href="shops.html" class="nav-btn">🛍️ Shops</a>
+            <a href="feedback.html" class="nav-btn">⭐ Feedback</a>
+            <a href="profile.html" class="nav-btn">👤 Profile</a>
+            <a href="statistics.html" class="nav-btn">📊 Statistics</a>
+            <button onclick="logout()" class="nav-btn" style="background: var(--danger-color);">🚪 Logout</button>
+        </div>
+
+        <!-- Profile Card -->
+        <div class="profile-card" id="profileCard">
+            <div class="spinner"></div>
+            <p class="loading-text">Loading your profile...</p>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <h3 class="mb-2">Quick Actions</h3>
+            <div class="grid grid-4">
+                <a href="rides.html" class="item-card text-center" style="text-decoration: none;">
+                    <div style="font-size: 3rem;">🎢</div>
+                    <h4>Book Rides</h4>
+                    <p>Explore and book exciting rides</p>
+                </a>
+                <a href="dining.html" class="item-card text-center" style="text-decoration: none;">
+                    <div style="font-size: 3rem;">🍔</div>
+                    <h4>Dining</h4>
+                    <p>Choose your favorite restaurant</p>
+                </a>
+                <a href="shops.html" class="item-card text-center" style="text-decoration: none;">
+                    <div style="font-size: 3rem;">🛍️</div>
+                    <h4>Shopping</h4>
+                    <p>Browse and purchase</p>
+                </a>
+                <a href="feedback.html" class="item-card text-center" style="text-decoration: none;">
+                    <div style="font-size: 3rem;">⭐</div>
+                    <h4>Feedback</h4>
+                    <p>Share your experience</p>
+                </a>
+            </div>
+        </div>
+
+          </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        // Check authentication
+        if (!checkAuth()) {
+            window.location.href = 'login.html';
+        }
+
+        const visitor = getVisitor();
+
+        // Load profile and card data
+        async function loadDashboard() {
+            // Update welcome text
+            document.getElementById('welcomeText').textContent = `Welcome back, ${visitor.Name}!`;
+
+            // Load card details
+            const cardResult = await apiCall('get_card.php', 'GET', { visitor_number: visitor.Number });
+            
+            if (cardResult.success) {
+                const card = cardResult.card;
+                
+                document.getElementById('profileCard').innerHTML = `
+                    <h2>${visitor.Name}</h2>
+                    <p>Visitor #${visitor.Number} | Age: ${visitor.Age}</p>
+                    <div class="balance">${formatCurrency(card.Balance)}</div>
+                    <p>Card Balance</p>
+                    ${card.VIP ? '<span class="badge badge-vip" style="font-size: 1.2rem;">VIP MEMBER</span>' : '<span class="badge badge-regular">Regular Member</span>'}
+                    
+                    <div class="profile-info mt-2">
+                        <div class="profile-info-item">
+                            <strong>Card ID</strong>
+                            <span>${card.Card_id}</span>
+                        </div>
+                        <div class="profile-info-item">
+                            <strong>Member Type</strong>
+                            <span>${card.VIP ? 'VIP' : 'Regular'}</span>
+                        </div>
+                        <div class="profile-info-item">
+                            <strong>Dining At</strong>
+                            <span>${visitor.Eats_at || 'Not selected'}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-2 mt-2">
+                        <button onclick="location.href='profile.html'" class="btn btn-secondary">Recharge Card</button>
+                        ${!card.VIP ? '<button onclick="location.href=\'profile.html\'" class="btn btn-warning">Upgrade to VIP</button>' : ''}
+                    </div>
+                `;
+            }
+
+            // Load recent rides
+            const ridesResult = await apiCall('get_my_rides.php', 'GET', { visitor_number: visitor.Number });
+            const purchasesResult = await apiCall('get_my_purchases.php', 'GET', { visitor_number: visitor.Number });
+            
+            let activityHTML = '<h4>Your Recent Rides</h4>';
+            
+            if (ridesResult.success && ridesResult.rides.length > 0) {
+                activityHTML += '<div class="table-container"><table><thead><tr><th>Ride</th><th>Cost</th><th>Date</th></tr></thead><tbody>';
+                ridesResult.rides.slice(0, 5).forEach(ride => {
+                    activityHTML += `
+                        <tr>
+                            <td>${ride.Name}</td>
+                            <td>${formatCurrency(ride.Cost)}</td>
+                            <td>${new Date(ride.Enjoy_date).toLocaleString()}</td>
+                        </tr>
+                    `;
+                });
+                activityHTML += '</tbody></table></div>';
+            } else {
+                activityHTML += '<p>No rides enjoyed yet. <a href="rides.html">Book your first ride!</a></p>';
+            }
+            
+            activityHTML += '<h4 class="mt-2">Recent Purchases</h4>';
+            
+            if (purchasesResult.success && purchasesResult.purchases.length > 0) {
+                activityHTML += '<div class="table-container"><table><thead><tr><th>Shop</th><th>Type</th><th>Date</th></tr></thead><tbody>';
+                purchasesResult.purchases.slice(0, 5).forEach(purchase => {
+                    activityHTML += `
+                        <tr>
+                            <td>${purchase.Name}</td>
+                            <td><span class="badge badge-success">${purchase.Type}</span></td>
+                            <td>${new Date(purchase.Purchase_date).toLocaleString()}</td>
+                        </tr>
+                    `;
+                });
+                activityHTML += '</tbody></table></div>';
+            } else {
+                activityHTML += '<p>No purchases yet. <a href="shops.html">Visit our shops!</a></p>';
+            }
+            
+            document.getElementById('recentActivity').innerHTML = activityHTML;
+        }
+
+        loadDashboard();
+    </script>
+</body>
+</html>

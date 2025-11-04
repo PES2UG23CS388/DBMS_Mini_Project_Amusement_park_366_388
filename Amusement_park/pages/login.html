@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Wonderland</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<style>
+        /* Background Image Styling - Using Beautiful Amusement Park Image */
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), 
+                        url('https://jurasikparkinn.com/wp-content/uploads/2024/02/6-Reasons-To-Explore-Amusement-Parks.webp') center/cover no-repeat fixed !important;
+            min-height: 100vh;
+        }
+</style>
+<body>
+    <div class="header">
+        <h1>🎢 Wonderland Amusement Park</h1>
+        <p>Login to Your Account</p>
+    </div>
+
+    <div class="container">
+        <div class="card" style="max-width: 500px; margin: 0 auto;">
+            <h2 class="text-center mb-2">Login</h2>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="visitorNumber">Visitor Number *</label>
+                    <input type="number" id="visitorNumber" class="form-control" required>
+                    <small style="color: #666;">Enter the visitor number you received during signup</small>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-full">Login</button>
+            </form>
+            
+            <p class="text-center mt-2">
+                Don't have an account? 
+                <a href="signup.html" style="color: var(--primary-color); font-weight: 600;">Sign up here</a>
+            </p>
+            
+            <p class="text-center mt-2">
+                <a href="index.html" style="color: #666;">← Back to Home</a>
+            </p>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const visitorNumber = parseInt(document.getElementById('visitorNumber').value);
+            
+            if (!visitorNumber || visitorNumber <= 0) {
+                showAlert('Please enter a valid visitor number', 'danger');
+                return;
+            }
+            
+            const result = await apiCall('login.php', 'POST', { visitorNumber });
+            
+            if (result.success) {
+                setVisitor(result.visitor);
+                showAlert('Login successful! Redirecting...', 'success');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+            } else {
+                showAlert(result.message, 'danger');
+            }
+        });
+    </script>
+</body>
+</html>

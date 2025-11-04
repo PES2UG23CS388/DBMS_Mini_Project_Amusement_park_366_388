@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shops - Wonderland</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<style>
+        /* Background Image Styling - Using Beautiful Amusement Park Image */
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), 
+                        url('https://media.gettyimages.com/id/200303856-001/photo/shoe-tents-in-amusement-park.jpg?s=612x612&w=gi&k=20&c=fB6VbmzCZk0RiKWSW9bB0tC0Yw0edPKHhlWDheVRaxk=') center/cover no-repeat fixed !important;
+            min-height: 100vh;
+        }
+</style>
+<style>
+    /* FORCE WHITE CARDS FOR SHOPS */
+    .item-card {
+        background-color: white !important;
+        color: #2C3E50 !important;
+        padding: 1.5rem !important;
+        border-radius: 12px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .item-card h3,
+    .item-card p,
+    .item-card .price,
+    .item-card .rating {
+        color: #2C3E50 !important;
+        text-shadow: none !important;
+    }
+
+    .grid > div {
+        background-color: white !important;
+    }
+</style>
+<body>
+    <div class="header">
+        <h1>🎢 Wonderland Amusement Park</h1>
+        <p>Shopping & Souvenirs</p>
+    </div>
+
+    <div class="container">
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="dashboard.html" class="nav-btn">🏠 Dashboard</a>
+            <a href="rides.html" class="nav-btn">🎢 Rides</a>
+            <a href="dining.html" class="nav-btn">🍔 Dining</a>
+            <a href="shops.html" class="nav-btn active">🛍️ Shops</a>
+            <a href="feedback.html" class="nav-btn">⭐ Feedback</a>
+            <a href="profile.html" class="nav-btn">👤 Profile</a>
+            <a href="statistics.html" class="nav-btn">📊 Statistics</a>
+            <button onclick="logout()" class="nav-btn" style="background: var(--danger-color);">🚪 Logout</button>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <label for="filterShopType" style="font-weight: 600;">Filter by Type:</label>
+            <select id="filterShopType" class="form-control" style="width: auto;">
+                <option value="all">All Shops</option>
+                <option value="Souvenir">Souvenir</option>
+                <option value="Food">Food</option>
+                <option value="Apparel">Apparel</option>
+                <option value="Service">Service</option>
+                <option value="Toys">Toys</option>
+                <option value="Entertainment">Entertainment</option>
+            </select>
+        </div>
+
+        <!-- Shops Grid -->
+        <div id="shopsContainer">
+            <div class="spinner"></div>
+            <p class="loading-text">Loading shops...</p>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        if (!checkAuth()) {
+            window.location.href = 'login.html';
+        }
+
+        const visitor = getVisitor();
+        let allShops = [];
+
+        async function loadShops() {
+            const shopsResult = await apiCall('get_shops.php', 'GET');
+            
+            if (shopsResult.success) {
+                allShops = shopsResult.shops;
+                displayShops(allShops);
+            } else {
+                document.getElementById('shopsContainer').innerHTML = '<p class="text-center">Failed to load shops.</p>';
+            }
+        }
+
+        function displayShops(shops) {
+            if (shops.length === 0) {
+                document.getElementById('shopsContainer').innerHTML = '<p class="text-center">No shops found.</p>';
+                return;
+            }
+
+            let html = '<div class="grid grid-3">';
+            
+            shops.forEach(shop => {
+                html += `
+                    <div class="item-card">
+                        <h3>${shop.Name}</h3>
+                        <p><span class="badge badge-success">${shop.Type}</span></p>
+                        <p>🕒 Opens at: ${shop.Open}</p>
+                        <p>👤 Owner: ${shop.Owner_Name || 'N/A'}</p>
+                        <p>🛒 ${shop.Purchase_Count} purchases</p>
+                        
+                        <button class="btn btn-primary btn-full mt-1" onclick="makePurchase('${shop.Shop_license}', '${shop.Name}')">
+                            Make Purchase
+                        </button>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            document.getElementById('shopsContainer').innerHTML = html;
+        }
+
+        async function makePurchase(shopLicense, shopName) {
+            if (!confirm(`Record purchase at ${shopName}?`)) {
+                return;
+            }
+
+            const result = await apiCall('purchase_shop.php', 'POST', {
+                visitorNumber: visitor.Number,
+                shopLicense: shopLicense
+            });
+
+            if (result.success) {
+                showAlert(`✅ ${result.message} at ${shopName}`, 'success');
+                loadShops(); // Reload to update purchase count
+            } else {
+                showAlert(`❌ ${result.message}`, 'danger');
+            }
+        }
+
+        // Filter functionality
+        document.getElementById('filterShopType').addEventListener('change', function() {
+            const filter = this.value;
+            let filtered = [...allShops];
+            
+            if (filter !== 'all') {
+                filtered = filtered.filter(s => s.Type === filter);
+            }
+            
+            displayShops(filtered);
+        });
+
+        loadShops();
+    </script>
+</body>
+</html>

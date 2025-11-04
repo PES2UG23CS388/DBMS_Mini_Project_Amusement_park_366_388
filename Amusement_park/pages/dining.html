@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dining - Wonderland</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<style>
+        /* Background Image Styling - Using Beautiful Amusement Park Image */
+        body {
+            background: linear-gradient(rgba(0, 0, 0, 0.45), rgba(0, 0, 0, 0.45)), 
+                        url('https://static.vecteezy.com/system/resources/thumbnails/070/207/466/small/american-fast-food-platter-with-cheeseburger-and-crispy-fries-photo.jpg') center/cover no-repeat fixed !important;
+            min-height: 100vh;
+        }
+    </style>
+<body>
+    <div class="header">
+        <h1>🎢 Wonderland Amusement Park</h1>
+        <p>Delicious Dining Options</p>
+    </div>
+
+    <div class="container">
+        <!-- Navigation -->
+        <div class="nav">
+            <a href="dashboard.html" class="nav-btn">🏠 Dashboard</a>
+            <a href="rides.html" class="nav-btn">🎢 Rides</a>
+            <a href="dining.html" class="nav-btn active">🍔 Dining</a>
+            <a href="shops.html" class="nav-btn">🛍️ Shops</a>
+            <a href="feedback.html" class="nav-btn">⭐ Feedback</a>
+            <a href="profile.html" class="nav-btn">👤 Profile</a>
+            <a href="statistics.html" class="nav-btn">📊 Statistics</a>
+            <button onclick="logout()" class="nav-btn" style="background: var(--danger-color);">🚪 Logout</button>
+        </div>
+
+        <!-- Current Dining Preference -->
+        <div class="card">
+            <h3>Your Current Dining Preference</h3>
+            <p id="currentDining">Loading...</p>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar">
+            <label for="filterVeg" style="font-weight: 600;">Filter:</label>
+            <select id="filterVeg" class="form-control" style="width: auto;">
+                <option value="all">All Restaurants</option>
+                <option value="veg">Vegetarian Only</option>
+                <option value="non-veg">Non-Vegetarian</option>
+            </select>
+        </div>
+
+        <!-- Restaurants Grid -->
+        <div id="messContainer">
+            <div class="spinner"></div>
+            <p class="loading-text">Loading restaurants...</p>
+        </div>
+    </div>
+
+    <script src="../js/main.js"></script>
+    <script>
+        if (!checkAuth()) {
+            window.location.href = 'login.html';
+        }
+
+        const visitor = getVisitor();
+        let allMess = [];
+
+        async function loadDining() {
+            // Show current dining preference
+            document.getElementById('currentDining').textContent = 
+                visitor.Eats_at ? `You are dining at: ${visitor.Eats_at}` : 'You haven\'t selected a restaurant yet';
+
+            // Get all restaurants
+            const messResult = await apiCall('get_mess.php', 'GET');
+            
+            if (messResult.success) {
+                allMess = messResult.mess;
+                displayMess(allMess);
+            } else {
+                document.getElementById('messContainer').innerHTML = '<p class="text-center">Failed to load restaurants.</p>';
+            }
+        }
+
+        function displayMess(messList) {
+            if (messList.length === 0) {
+                document.getElementById('messContainer').innerHTML = '<p class="text-center">No restaurants found.</p>';
+                return;
+            }
+
+            let html = '<div class="grid grid-3">';
+            
+            messList.forEach(mess => {
+                const isVeg = mess.Vegetarian == 1;
+                const isSelected = visitor.Eats_at === mess.Name;
+                
+                html += `
+                    <div class="item-card ${isSelected ? 'item-card-selected' : ''}" style="${isSelected ? 'border: 3px solid var(--success-color);' : ''}">
+                        <h3>${mess.Name} ${isVeg ? '<span class="badge badge-veg">VEG</span>' : '<span class="badge badge-non-veg">NON-VEG</span>'}</h3>
+                        <p class="price">${formatCurrency(mess.Price)}</p>
+                        <p>👥 ${mess.Visitor_Count} visitors dining here</p>
+                        
+                        ${isSelected ? '<p style="color: var(--success-color); font-weight: 600;">✓ Currently Selected</p>' : ''}
+                        
+                        <button class="btn btn-secondary btn-full mt-1" onclick="viewMenu('${mess.Name}')">
+                            View Menu
+                        </button>
+                        
+                        <button 
+                            class="btn btn-primary btn-full mt-1" 
+                            onclick="selectDining('${mess.Name}')"
+                            ${isSelected ? 'disabled' : ''}
+                        >
+                            ${isSelected ? 'Selected' : 'Select Restaurant'}
+                        </button>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            document.getElementById('messContainer').innerHTML = html;
+        }
+
+        async function viewMenu(messName) {
+            const menuResult = await apiCall('get_mess_food.php', 'GET', { mess_name: messName });
+            
+            if (menuResult.success) {
+                let menuHTML = `<h3>Menu for ${messName}</h3><ul style="list-style: none; padding: 0;">`;
+                
+                if (menuResult.items.length > 0) {
+                    menuResult.items.forEach(item => {
+                        menuHTML += `<li style="padding: 8px; background: var(--light-color); margin: 5px 0; border-radius: 5px;">🍽️ ${item}</li>`;
+                    });
+                } else {
+                    menuHTML += '<li>No menu items available</li>';
+                }
+                
+                menuHTML += '</ul>';
+                
+                showAlert(menuHTML, 'info');
+            } else {
+                showAlert('Failed to load menu', 'danger');
+            }
+        }
+
+        async function selectDining(messName) {
+            if (!confirm(`Set ${messName} as your dining preference?`)) {
+                return;
+            }
+
+            const result = await apiCall('set_dining.php', 'POST', {
+                visitorNumber: visitor.Number,
+                messName: messName
+            });
+
+            if (result.success) {
+                showAlert(`✅ ${result.message}`, 'success');
+                visitor.Eats_at = messName;
+                setVisitor(visitor); // Update session
+                loadDining(); // Reload
+            } else {
+                showAlert(`❌ ${result.message}`, 'danger');
+            }
+        }
+
+        // Filter functionality
+        document.getElementById('filterVeg').addEventListener('change', function() {
+            const filter = this.value;
+            let filtered = [...allMess];
+            
+            if (filter === 'veg') {
+                filtered = filtered.filter(m => m.Vegetarian == 1);
+            } else if (filter === 'non-veg') {
+                filtered = filtered.filter(m => m.Vegetarian == 0);
+            }
+            
+            displayMess(filtered);
+        });
+
+        loadDining();
+    </script>
+</body>
+</html>
